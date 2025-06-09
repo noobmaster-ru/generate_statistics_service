@@ -1,0 +1,9 @@
+# Пример содержимого .dockerignore
+.git/
+venv/
+__pycache__/
+*.log
+*.pyc
+.env
+; data/  # Если есть тяжелые датасеты
+; temp/

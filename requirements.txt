@@ -1,0 +1,16 @@
+dash==3.0.3
+Flask==3.0.0
+loguru==0.7.3
+numpy==2.2.4
+pandas==2.2.3
+plotly==6.0.1
+qrcode==8.1
+Requests==2.32.3
+Pillow
+tinify
+python-multipart==0.0.20
+gunicorn
+fastapi
+uvicorn
+kaleido
+psutil
