@@ -6,13 +6,14 @@ import csv
 import base64
 import json
 
-SEMAPHORE_LIMIT = 7
+from constants import SEMAPHORE_LIMIT, CABINET_DIR, RESULTS_DIR, URL
+# SEMAPHORE_LIMIT = 7
 
-cabinet_dir = "cabinet_data_samples"
-results_dir = "results_100"
-url = "http://localhost:8050/get-image-weekly"
+# cabinet_dir = "cabinet_data_samples"
+# results_dir = "results_100"
+# url = "http://localhost:8050/get-image-weekly"
 
-semaphore = asyncio.Semaphore(SEMAPHORE_LIMIT)
+
 
 
 def get_unique_csv_path(base_dir, base_filename="request_stats.csv"):
@@ -30,22 +31,29 @@ def get_unique_csv_path(base_dir, base_filename="request_stats.csv"):
         index += 1
 
 
-request_stats = []
 
 
+"""send_request(
+    session: aiohttp.ClientSession(),
+    file_path: chunk_*.csv,
+    index: index of chunk_*.csv
+"""
 async def send_request(session, file_path, index):
     async with semaphore:
         start = time.perf_counter()
         success = False
         error_message = ""
         try:
+            # чтение в бинарном режиме всех файлов chunk_*.csv асинхронно
             with open(file_path, "rb") as f:
                 data = {
                     "token_id": "123",
                     "supplier_id": "21341",
                     "cabinet_name": "test_cabinet",
                 }
-                form = aiohttp.FormData()
+                form = aiohttp.FormData() # экземляр класса для отправки  HTTP запроса
+                
+                # c 57 по 64 строку добавляем  поля к запросу
                 form.add_field(
                     "file",
                     f,
@@ -54,14 +62,16 @@ async def send_request(session, file_path, index):
                 )
                 for k, v in data.items():
                     form.add_field(k, v)
+                
 
-                async with session.post(url, data=form) as resp:
+                # отпрявляем запрос POST и получаем ответ от FASTapi нашего 
+                async with session.post(URL, data=form) as resp:
                     if resp.status == 200:
                         json_resp = await resp.json()
                         base64_img = json_resp.get("image_base64")
                         if base64_img:
                             img_bytes = base64.b64decode(base64_img)
-                            filename = f"{results_dir}/weekly-stat-{index}.png"
+                            filename = f"{RESULTS_DIR}/weekly-stat-{index}.png"
                             with open(filename, "wb") as out:
                                 out.write(img_bytes)
                             print(f"✅ Получено: {filename}")
@@ -74,6 +84,8 @@ async def send_request(session, file_path, index):
             error_message = str(e)
             print(f"❌ Ошибка в запросе {index}: {e}")
 
+
+        # общая статистика по всем запросам
         duration = time.perf_counter() - start
         request_stats.append(
             {
@@ -89,16 +101,20 @@ async def send_request(session, file_path, index):
 async def main():
     files = sorted(
         [
-            os.path.join(cabinet_dir, f)
-            for f in os.listdir(cabinet_dir)
+            os.path.join(CABINET_DIR, f)
+            for f in os.listdir(CABINET_DIR)
             if f.endswith(".csv")
         ]
-    )[:100]
+    )[:100] # первые 100 файлов chunk_*.csv
 
-    os.makedirs(results_dir, exist_ok=True)
+
+    # создает папку с графиками для 100 файлов
+    os.makedirs(RESULTS_DIR, exist_ok=True)
 
     start_time = time.perf_counter()
 
+
+    # отправляет запросы по всем файлам из cabinet_data_samples
     async with aiohttp.ClientSession() as session:
         await asyncio.gather(
             *[
@@ -120,5 +136,7 @@ async def main():
     print(f"❌ Ошибок: {fail_count}")
     print(f"⚡ Скорость: {speed:.2f} запросов/сек")
 
-
-asyncio.run(main())
+if __name__ == "__main__":
+    request_stats = []
+    semaphore = asyncio.Semaphore(SEMAPHORE_LIMIT)
+    asyncio.run(main())

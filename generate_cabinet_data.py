@@ -1,3 +1,4 @@
+# генерирует данные от апи и сохраняет в cabinet_data_samples 1000 файлов по 14 дней в каждом
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -9,10 +10,11 @@ num_records = 14_000
 records_per_file = 14
 num_files = num_records // records_per_file
 
-initial_date = datetime.strptime("2025-04-25", "%Y-%m-%d")  # или любую стартовую
+today_str = datetime.today().strftime("%Y-%m-%d")
+initial_date = datetime.strptime(today_str, "%Y-%m-%d")  # или любую стартовую
 
 # Сдвигаем initial_date назад до ближайшего понедельника
-weekday = initial_date.weekday()  # 0 = понедельник
+weekday = initial_date.weekday()  # 0 = понедельник, 6 - воскресенье
 base_monday = initial_date - timedelta(days=weekday)
 
 # Каждые 13 записей — новая группа, начинающаяся с понедельника
@@ -49,3 +51,6 @@ for i in range(num_files):
         file_path, sep=";", index=False, quoting=csv.QUOTE_NONE, escapechar="\\"
     )
     file_paths.append(file_path)
+
+
+print("Генерация данных завершена.")
