@@ -5,30 +5,7 @@ import time
 import csv
 import base64
 import json
-
-from constants import SEMAPHORE_LIMIT, CABINET_DIR, RESULTS_DIR, URL
-# SEMAPHORE_LIMIT = 7
-
-# cabinet_dir = "cabinet_data_samples"
-# results_dir = "results_100"
-# url = "http://localhost:8050/get-image-weekly"
-
-
-
-
-def get_unique_csv_path(base_dir, base_filename="request_stats.csv"):
-    base_path = os.path.join(base_dir, base_filename)
-    if not os.path.exists(base_path):
-        return base_path
-
-    name, ext = os.path.splitext(base_filename)
-    index = 1
-    while True:
-        new_filename = f"{name}_{index}{ext}"
-        new_path = os.path.join(base_dir, new_filename)
-        if not os.path.exists(new_path):
-            return new_path
-        index += 1
+from dotenv import load_dotenv
 
 
 
@@ -65,7 +42,7 @@ async def send_request(session, file_path, index):
                 
 
                 # отпрявляем запрос POST и получаем ответ от FASTapi нашего 
-                async with session.post(URL, data=form) as resp:
+                async with session.post(URL_WEEKLY, data=form) as resp:
                     if resp.status == 200:
                         json_resp = await resp.json()
                         base64_img = json_resp.get("image_base64")
@@ -101,8 +78,8 @@ async def send_request(session, file_path, index):
 async def main():
     files = sorted(
         [
-            os.path.join(CABINET_DIR, f)
-            for f in os.listdir(CABINET_DIR)
+            os.path.join(CORRECT_DATA, f)
+            for f in os.listdir(CORRECT_DATA)
             if f.endswith(".csv")
         ]
     )[:100] # первые 100 файлов chunk_*.csv
@@ -114,7 +91,7 @@ async def main():
     start_time = time.perf_counter()
 
 
-    # отправляет запросы по всем файлам из cabinet_data_samples
+    # отправляет запросы по всем файлам из tests/correct_data
     async with aiohttp.ClientSession() as session:
         await asyncio.gather(
             *[
@@ -128,6 +105,7 @@ async def main():
     success_count = sum(1 for r in request_stats if r["success"])
     fail_count = len(request_stats) - success_count
     speed = success_count / total_time if total_time > 0 else 0
+    # speed_2 = total_time / success_count if total_time > 0 else 0
 
     # Вывод общей статистики
     print("\n📊 Итоговая статистика:")
@@ -135,8 +113,15 @@ async def main():
     print(f"✅ Успешных: {success_count}")
     print(f"❌ Ошибок: {fail_count}")
     print(f"⚡ Скорость: {speed:.2f} запросов/сек")
+    # print(f"⚡ Скорость: {speed_2:.2f} сек на запрос")
 
 if __name__ == "__main__":
+    load_dotenv()
+    SEMAPHORE_LIMIT = int(os.getenv("SEMAPHORE_LIMIT"))
+    CORRECT_DATA = os.getenv("CORRECT_DATA") 
+    RESULTS_DIR = os.getenv("RESULTS_DIR")
+    URL_WEEKLY = os.getenv("URL_WEEKLY")
+
     request_stats = []
     semaphore = asyncio.Semaphore(SEMAPHORE_LIMIT)
     asyncio.run(main())

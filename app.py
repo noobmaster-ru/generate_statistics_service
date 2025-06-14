@@ -13,7 +13,7 @@ import numpy as np
 # варианты: Pillow, pngquant, OpenCV
 from PIL import Image
 import io
-import tinify 
+# import tinify 
 import io
 import json
 from email.mime.multipart import MIMEMultipart
@@ -29,7 +29,7 @@ from fastapi.responses import JSONResponse
 from fastapi import HTTPException, UploadFile
 from datetime import datetime
 
-tinify.key = "Vc1ZzMhvsvNSkbVSzdD7ntP4mqHZV1vP"  # Заменить API ключ
+# tinify.key = "Vc1ZzMhvsvNSkbVSzdD7ntP4mqHZV1vP"  # Заменить API ключ
 
 app = FastAPI()
 
@@ -45,7 +45,7 @@ app.add_middleware(
 
 def build_base64_json_response(fig, json_payload: dict) -> JSONResponse:
     # Convert figure to PNG bytes
-    img_bytes = fig.to_image(format="png")
+    img_bytes = fig.to_image(format="png") # Convert a figure to a static image bytes string
 
     # Compress with TinyPNG
     # source = tinify.from_buffer(img_bytes)
@@ -55,8 +55,8 @@ def build_base64_json_response(fig, json_payload: dict) -> JSONResponse:
     img = Image.open(io.BytesIO(img_bytes))
     buffer = io.BytesIO()
 
-    # img.save(buffer, format="PNG", optimize=True) 
-    img.save(buffer, format="WEBP", quality=80)  # Можно понизить quality для сильнее сжатия
+    # img.save(buffer, format="JPEG" ,quality=70)  # выдает ошибку:  {"error":"cannot write mode RGBA as JPEG"}
+    img.save(buffer, format="WEBP", quality=70)  # Можно понизить quality для сильнее сжатия
 
     compressed_img_bytes = buffer.getvalue()
 
@@ -68,7 +68,22 @@ def build_base64_json_response(fig, json_payload: dict) -> JSONResponse:
 
     return JSONResponse(content=json_payload)
 
+# convert data to expected types in all dataframe
+def cast_columns(df: pd.DataFrame, expected_columns: dict) -> pd.DataFrame:
+    df = df.copy()
 
+    for col, dtype in expected_columns.items():
+        if col not in df.columns:
+            raise HTTPException(status_code=400, detail = f"Column '{col}' is missing")
+
+        if dtype == "datetime":
+            df[col] = pd.to_datetime(df[col], errors="coerce")
+        else:
+            df[col] = pd.to_numeric(df[col], errors="coerce", downcast=None if dtype == float else "integer")
+
+    return df
+
+# 400 error - data error
 def read_csv_safe(file: UploadFile) -> pd.DataFrame:
     try:
         # Читаем всё как строки, без автоматической подстановки NaN
@@ -83,11 +98,16 @@ def read_csv_safe(file: UploadFile) -> pd.DataFrame:
         "add_to_cart_count": int,
         "orders_count": int,
         "orders_sum_rub": int,
+        "median_orders_sum_per_user": int,
+        "median_drr": float,
+        "avg_orders_sum_per_user": int,
+        "drr": float,
         "views": int,
         "cliks": int,
         "sum": float,
     }
-
+    # convert all data from df to expected types
+    df = cast_columns(df, expected_columns)
     if len(df) < 14:
         raise HTTPException(status_code=400, detail=f"Ожидалось минимум 14 строк данных (без заголовка), получено: {len(df)}")
 
@@ -99,26 +119,39 @@ def read_csv_safe(file: UploadFile) -> pd.DataFrame:
         for i, val in enumerate(df[col], start=2):  # +2 потому что первая строка — заголовки
             try:
                 if expected_type == "datetime":
-                    # Проверка кавычек
-                    if any(val.startswith(c) and val.endswith(c) for c in ('"', "'", "`")):
-                        raise ValueError("Дата в кавычках")
-                    pd.to_datetime(val, format="%Y-%m-%d")
+                    try:
+                        pd.to_datetime(val, format="%Y-%m-%d")
+                    except Exception as e:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Столбец '{col}', строка {i}: значение '{val}' не соответствует типу {expected_type} — {e}"
+                        )
                 elif expected_type == int:
-                    if any(val.startswith(c) and val.endswith(c) for c in ('"', "'", "`")):
-                        raise ValueError("int в кавычках")
-                    int(val)
+                    try:
+                        int(val)
+                    except Exception as e:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Столбец '{col}', строка {i}: значение '{val}' не соответствует типу {expected_type} — {e}"
+                        )
                 elif expected_type == float:
-                    if any(val.startswith(c) and val.endswith(c) for c in ('"', "'", "`")):
-                        raise ValueError("float в кавычках")
-                    float(val)
+                    try:
+                        float(val)
+                    except Exception as e:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Столбец '{col}', строка {i}: значение '{val}' не соответствует типу {expected_type} — {e}"
+                        )
                 else:
-                    raise ValueError("Неизвестный ожидаемый тип")
+                    raise HTTPException(
+                            status_code=400,
+                            detail=f"Столбец '{col}', строка {i}: значение '{val}' не соответствует типу {expected_type} — {e}"
+                        )
             except Exception as e:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Столбец '{col}', строка {i}: значение '{val}' не соответствует типу {expected_type} — {e}"
                 )
-
     return df
 
 
@@ -135,10 +168,10 @@ async def daily_statistics(
         logger.info(f"Received files: {file1.filename}, {file2.filename}")
 
         # считываем csv с учетом возможных ошибок - если будет ошибка чтения, то сработает exception 
-        df1 = read_csv_safe(file1.file)
-        df2 = read_csv_safe(file2.file)
+        df1 = read_csv_safe(file1.file) # read_csv_safe(file1.file)
+        df2 = read_csv_safe(file2.file) # read_csv_safe(file2.file)
 
-        fig = generate_daily_statistics(df1, df2)
+        fig = generate_daily_statistics(df1, df2) # делает фотографию типа Figure
 
         json_payload = {
             "token_id": token_id,
@@ -162,7 +195,7 @@ async def weekly_statistics(
 ):
     try:
         logger.info(f"Received file: {file.filename}")
-        df = read_csv_safe(file.file)
+        df = read_csv_safe(file.file) # pd.read_csv(file.file, sep=";")
 
         start = time.perf_counter()
         fig = generate_weekly_statistics(df)
