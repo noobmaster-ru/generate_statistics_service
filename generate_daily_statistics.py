@@ -9,7 +9,7 @@ from loguru import logger
 
 
 def generate_daily_statistics(df_avg, df_weekly):
-    logger.info(f"generate daily statisticss started")
+    # logger.info(f"generate daily statisticss started")
 
     # Средние по боту
     df_avg["date"] = pd.to_datetime(df_avg["date"])  # average_cabinet_info.csv
@@ -26,7 +26,7 @@ def generate_daily_statistics(df_avg, df_weekly):
 
     df = df_weekly  # cabinet_info.csv
     df["date"] = pd.to_datetime(df["date"])
-    logger.info(f"df is {df}")
+    # logger.info(f"df is {df}")
     latest_date = df["date"].max()
     this_week = df[df["date"] > latest_date - timedelta(days=7)]
 
@@ -46,7 +46,7 @@ def generate_daily_statistics(df_avg, df_weekly):
             [{"secondary_y": True}],
         ],
     )
-    logger.info(f"fig is {fig}")
+    # logger.info(f"fig is {fig}")
     fig.add_trace(
         go.Bar(
             x=this_week_avg["day"],
@@ -62,7 +62,7 @@ def generate_daily_statistics(df_avg, df_weekly):
         row=1,
         col=1,
     )
-    logger.info(f"fig after adding traces")
+    # logger.info(f"fig after adding traces")
 
     fig.add_trace(
         go.Bar(
@@ -147,7 +147,7 @@ def generate_daily_statistics(df_avg, df_weekly):
         row=3,
         col=1,
     )
-    logger.info(f"fig after adding traces")
+    # logger.info(f"fig after adding traces")
     fig.update_yaxes(title_text="Сумма заказов", row=1, col=1)
     fig.update_yaxes(title_text="ДРР (%)", row=2, col=1)
     fig.update_yaxes(
@@ -203,7 +203,7 @@ def generate_daily_statistics(df_avg, df_weekly):
     )
 
     current_date = datetime.now().strftime("%d/%m/%Y")
-    logger.info(f"current date is {current_date}")
+    # logger.info(f"current date is {current_date}")
     fig.update_layout(
         height=1280,  # Увеличиваем высоту графика
         width=1280,  # Уменьшаем ширину графика

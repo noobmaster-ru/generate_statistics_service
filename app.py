@@ -8,7 +8,7 @@ from PIL import Image
 import pandas as pd
 from pandas.errors import ParserError
 import numpy as np
-
+from typing import Dict
 # найти способ, как можно с опенсорсом сжать фото
 # варианты: Pillow, pngquant, OpenCV
 from PIL import Image
@@ -19,7 +19,7 @@ import json
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
-
+import pyvips
 from generate_daily_statistics import generate_daily_statistics
 from generate_weekly_statistics import generate_weekly_statistics
 import psutil
@@ -28,8 +28,12 @@ import base64
 from fastapi.responses import JSONResponse
 from fastapi import HTTPException, UploadFile
 from datetime import datetime
-
-# tinify.key = "Vc1ZzMhvsvNSkbVSzdD7ntP4mqHZV1vP"  # Заменить API ключ
+from plotly.graph_objs import Figure
+import cairosvg
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
+import plotly.graph_objects as go
 
 app = FastAPI()
 
@@ -42,31 +46,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+executor = ThreadPoolExecutor(max_workers=6)  # number of workers/processes
 
-def build_base64_json_response(fig, json_payload: dict) -> JSONResponse:
-    # Convert figure to PNG bytes
-    img_bytes = fig.to_image(format="png") # Convert a figure to a static image bytes string
+async def build_base64_json_response(fig, json_payload: dict) -> JSONResponse:
+    def convert_figure():
+        # most leak place - too much ms wasted
+        start = time.perf_counter()
+        png_bytes = fig.to_image(format="png")
+        logger.info(f"time to_image = {time.perf_counter() - start:.3f}s") # false time cause not one process
 
-    # Compress with TinyPNG
-    # source = tinify.from_buffer(img_bytes)
-    # compressed_img_bytes = source.to_buffer()
-    
-    # Pillow compress
-    img = Image.open(io.BytesIO(img_bytes))
-    buffer = io.BytesIO()
+        img = Image.open(BytesIO(png_bytes))
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        return buffer.getvalue()
 
-    # img.save(buffer, format="JPEG" ,quality=70)  # выдает ошибку:  {"error":"cannot write mode RGBA as JPEG"}
-    img.save(buffer, format="WEBP", quality=70)  # Можно понизить quality для сильнее сжатия
+    compressed_img_bytes = await asyncio.get_event_loop().run_in_executor(executor, convert_figure)
 
-    compressed_img_bytes = buffer.getvalue()
-
-    # Encode image to base64
-    encoded_image = base64.b64encode(compressed_img_bytes).decode("utf-8")
-
-    # Add image to payload
-    json_payload["image_base64"] = encoded_image
-
+    img_base64 = base64.b64encode(compressed_img_bytes).decode("utf-8")
+    json_payload["image_base64"] = img_base64
     return JSONResponse(content=json_payload)
+
 
 # convert data to expected types in all dataframe
 def cast_columns(df: pd.DataFrame, expected_columns: dict) -> pd.DataFrame:
@@ -165,12 +164,11 @@ async def daily_statistics(
     cabinet_name: str = Form(...),
 ):
     try:
-        logger.info(f"Received files: {file1.filename}, {file2.filename}")
+        # logger.info(f"Received files: {file1.filename}, {file2.filename}")
 
         # считываем csv с учетом возможных ошибок - если будет ошибка чтения, то сработает exception 
         df1 = read_csv_safe(file1.file) # read_csv_safe(file1.file)
         df2 = read_csv_safe(file2.file) # read_csv_safe(file2.file)
-
         fig = generate_daily_statistics(df1, df2) # делает фотографию типа Figure
 
         json_payload = {
@@ -179,11 +177,11 @@ async def daily_statistics(
             "cabinet_name": cabinet_name,
         }
 
-        return build_base64_json_response(fig, json_payload)
+        return await build_base64_json_response(fig, json_payload)
 
     except Exception as e:
         logger.exception("Error generating daily stats")
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        return JSONResponse(status_code=400, content={"error": str(e)})
 
 
 @app.post("/get-image-weekly")
@@ -194,24 +192,23 @@ async def weekly_statistics(
     cabinet_name: str = Form(...),
 ):
     try:
-        logger.info(f"Received file: {file.filename}")
+        
+        # logger.info(f"Received file: {file.filename}")
         df = read_csv_safe(file.file) # pd.read_csv(file.file, sep=";")
 
-        start = time.perf_counter()
         fig = generate_weekly_statistics(df)
-        duration = time.perf_counter() - start
-
-        mem = psutil.Process().memory_info().rss / 1024**2
-        logger.info(f"📊 График построен за {duration:.2f}s, память: {mem:.1f} MB")
+        
+        # duration = time.perf_counter() - start
+        # mem = psutil.Process().memory_info().rss / 1024**2
+        # logger.info(f"📊 График построен за {duration:.2f}s, память: {mem:.1f} MB")
 
         json_payload = {
             "token_id": token_id,
             "supplier_id": supplier_id,
             "cabinet_name": cabinet_name,
         }
-
-        return build_base64_json_response(fig, json_payload)
+        return await build_base64_json_response(fig, json_payload)
 
     except Exception as e:
         logger.exception("Error generating weekly stats")
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        return JSONResponse(status_code=400, content={"error": str(e)})

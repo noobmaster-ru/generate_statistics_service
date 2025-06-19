@@ -16,7 +16,7 @@ def generate_weekly_statistics(df):
     numeric_columns = ["orders_sum_rub", "sum", "cliks", "views"]
     for col in numeric_columns:
         df[col] = pd.to_numeric(df[col], errors="coerce")
-        
+
     latest_date = df["date"].max()
     this_week = df[df["date"] > latest_date - timedelta(days=7)]
     last_week = df[
