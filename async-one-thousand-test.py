@@ -5,32 +5,8 @@ import time
 import csv
 import base64
 import json
+from dotenv import load_dotenv
 
-SEMAPHORE_LIMIT = 7
-
-cabinet_dir = "cabinet_data_samples"
-results_dir = "results_100"
-url = "http://localhost:8050/get-image-weekly"
-
-semaphore = asyncio.Semaphore(SEMAPHORE_LIMIT)
-
-
-def get_unique_csv_path(base_dir, base_filename="request_stats.csv"):
-    base_path = os.path.join(base_dir, base_filename)
-    if not os.path.exists(base_path):
-        return base_path
-
-    name, ext = os.path.splitext(base_filename)
-    index = 1
-    while True:
-        new_filename = f"{name}_{index}{ext}"
-        new_path = os.path.join(base_dir, new_filename)
-        if not os.path.exists(new_path):
-            return new_path
-        index += 1
-
-
-request_stats = []
 
 
 async def send_request(session, file_path, index):
@@ -55,13 +31,13 @@ async def send_request(session, file_path, index):
                 for k, v in data.items():
                     form.add_field(k, v)
 
-                async with session.post(url, data=form) as resp:
+                async with session.post(URL_WEEKLY, data=form) as resp:
                     if resp.status == 200:
                         json_resp = await resp.json()
                         base64_img = json_resp.get("image_base64")
                         if base64_img:
                             img_bytes = base64.b64decode(base64_img)
-                            filename = f"{results_dir}/weekly-stat-{index}.png"
+                            filename = f"{RESULTS_DIR}/weekly-stat-{index}.png"
                             with open(filename, "wb") as out:
                                 out.write(img_bytes)
                             print(f"✅ Получено: {filename}")
@@ -89,13 +65,13 @@ async def send_request(session, file_path, index):
 async def main():
     files = sorted(
         [
-            os.path.join(cabinet_dir, f)
-            for f in os.listdir(cabinet_dir)
+            os.path.join(CORRECT_DATA, f)
+            for f in os.listdir(CORRECT_DATA)
             if f.endswith(".csv")
         ]
-    )[:100]
+    )
 
-    os.makedirs(results_dir, exist_ok=True)
+    os.makedirs(RESULTS_DIR, exist_ok=True)
 
     start_time = time.perf_counter()
 
@@ -120,5 +96,14 @@ async def main():
     print(f"❌ Ошибок: {fail_count}")
     print(f"⚡ Скорость: {speed:.2f} запросов/сек")
 
+if __name__ == "__main__":
+    load_dotenv()
+    SEMAPHORE_LIMIT = int(os.getenv("SEMAPHORE_LIMIT"))
+    CORRECT_DATA = os.getenv("CORRECT_DATA") 
+    RESULTS_DIR = os.getenv("RESULTS_DIR")
+    URL_WEEKLY = os.getenv("URL_WEEKLY")
+    URL_DAILY = os.getenv("URL_DAILY")
 
-asyncio.run(main())
+    request_stats = []
+    semaphore = asyncio.Semaphore(SEMAPHORE_LIMIT)
+    asyncio.run(main())
