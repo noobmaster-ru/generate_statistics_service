@@ -147,25 +147,20 @@ async def main():
             if f.endswith(".csv")
         ]
     )
-
-
     os.makedirs(RESULTS_DIR, exist_ok=True)
-
     start_time = time.perf_counter()
-
-    tasks = []
-    # отправляет запросы по всем файлам из tests/correct_data
+    # отправляет запросы по всем файлам из correct_data
     async with aiohttp.ClientSession() as session:
         await asyncio.gather(
             *[
-                # coro
-                # for i in range(0, len(files)//2-1)
-                # for coro in (
-                #     send_request_daily(session, files[i], files[i + 1], i + 1),
-                #     send_request_weekly(session, files[i], i + 1)
-                # )
-                send_request_weekly(session, files[i], i + 1)
-                for i in range(0, len(files) - 1, 1)
+                coro
+                for i in range(0, len(files)//2-1)
+                for coro in (
+                    send_request_daily(session, files[i], files[i + 1], i + 1),
+                    send_request_weekly(session, files[i], i + 1)
+                )
+                # send_request_weekly(session, files[i], i + 1)
+                # for i in range(0, len(files) - 1, 1)
             ]
         )
     end_time = time.perf_counter()

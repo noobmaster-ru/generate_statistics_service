@@ -14,7 +14,10 @@ lsof -i :8050  // просмотр процессов ,которые  gunicorn 
 gunicorn app:app -k uvicorn.workers.UvicornWorker -w 8 --bind 0.0.0.0:8050 --timeout 180
 python async-one-thousand-test.py
 ```
-
+## тесты locust
+```
+locust -u 100 -r 10 --host http://localhost:8050 // 100 пользователей по 10 в секунду
+```
 ----------------------------------------
 # старт без docker
 uvicorn app:app --host 0.0.0.0 --port 8050 

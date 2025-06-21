@@ -1,13 +1,9 @@
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import  JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-
 from loguru import logger
-
 import pandas as pd
 import matplotlib.pyplot as plt
-
-
 import io
 from generate_daily_statistics import generate_daily_statistics
 from generate_weekly_statistics import generate_weekly_statistics
@@ -17,14 +13,9 @@ import base64
 from fastapi.responses import JSONResponse
 from fastapi import HTTPException, UploadFile
 import asyncio
-# import os
-# os.environ["PLOTLY_RENDERER"] = "png"
-# os.environ["BROWSER"] = "true"
-# import plotly.io as pio
-# pio.renderers.default = "png"
 import matplotlib
 matplotlib.use('Agg')  # <- отключает GUI backend
-# import matplotlib.pyplot as plt
+
 
 app = FastAPI()
 
