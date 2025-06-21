@@ -5,5 +5,6 @@ __pycache__/
 *.log
 *.pyc
 .env
-; data/  # Если есть тяжелые датасеты
-; temp/
+tests/  # Если есть тяжелые датасеты
+generate_tests/
+result_100/
