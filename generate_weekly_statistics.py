@@ -2,17 +2,13 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")  # <-- отключает GUI, включает off-screen rendering
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
-import matplotlib.patches as mpatches
 import matplotlib.gridspec as gridspec
 import qrcode
 import io
-import base64
 from datetime import datetime, timedelta
 
 
 def generate_weekly_statistics(df):
-    df["date"] = pd.to_datetime(df["date"])
     df["date"] = pd.to_datetime(df["date"])
 
     # Добавить это:

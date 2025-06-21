@@ -8,8 +8,7 @@ import json
 from dotenv import load_dotenv
 
 
-
-async def send_request(session, file_path, index):
+async def send_request_weekly(session, file_path, index):
     async with semaphore:
         start = time.perf_counter()
         success = False
@@ -72,73 +71,73 @@ async def send_request(session, file_path, index):
             }
         )
 
-# async def send_request_daily(session, file_path,file_path_, index):
-#     async with semaphore:
-#         start = time.perf_counter()
-#         success = False
-#         error_message = ""
-#         try:
-#             # чтение в бинарном режиме всех файлов chunk_*.csv асинхронно
-#             with open(file_path, "rb") as f1:
-#                 with open(file_path_, "rb") as f2:
-#                     data = {
-#                         "token_id": "123",
-#                         "supplier_id": "21341",
-#                         "cabinet_name": "test_cabinet",
-#                     }
-#                     form_daily = aiohttp.FormData() # экземляр класса для отправки  HTTP запроса
+async def send_request_daily(session, file_path,file_path_, index):
+    async with semaphore:
+        start = time.perf_counter()
+        success = False
+        error_message = ""
+        try:
+            # чтение в бинарном режиме всех файлов chunk_*.csv асинхронно
+            with open(file_path, "rb") as f1:
+                with open(file_path_, "rb") as f2:
+                    data = {
+                        "token_id": "123",
+                        "supplier_id": "21341",
+                        "cabinet_name": "test_cabinet",
+                    }
+                    form_daily = aiohttp.FormData() # экземляр класса для отправки  HTTP запроса
 
-#                     # c 57 по 64 строку добавляем  поля к запросу
-#                     form_daily.add_field(
-#                         "file1",
-#                         f1,
-#                         filename=os.path.basename(file_path),
-#                         content_type="text/csv",
-#                     )
-#                     form_daily.add_field(
-#                         "file2",
-#                         f2,
-#                         filename=os.path.basename(file_path_),
-#                         content_type="text/csv",
-#                     )
-#                     for k, v in data.items():
-#                         form_daily.add_field(k, v)
+                    # c 57 по 64 строку добавляем  поля к запросу
+                    form_daily.add_field(
+                        "file1",
+                        f1,
+                        filename=os.path.basename(file_path),
+                        content_type="text/csv",
+                    )
+                    form_daily.add_field(
+                        "file2",
+                        f2,
+                        filename=os.path.basename(file_path_),
+                        content_type="text/csv",
+                    )
+                    for k, v in data.items():
+                        form_daily.add_field(k, v)
 
-#                     # отпрявляем запрос POST и получаем ответ от FASTapi нашего 
-#                     async with session.post(URL_DAILY, data=form_daily) as resp:
-#                         if resp.status == 200:
-#                             json_resp = await resp.json()
-#                             base64_img = json_resp.get("image_base64")
-#                             if base64_img:
-#                                 img_bytes = base64.b64decode(base64_img)
-#                                 filename = f"{RESULTS_DIR}/daily-stat-{index}.png"
-#                                 with open(filename, "wb") as out:
-#                                     out.write(img_bytes)
-#                                 print(f"✅ Получено: {filename}")
-#                                 success = True
-#                             else:
-#                                 error_message = "❌ Нет поля 'image_base64' в ответе"
-#                         else:
-#                             error_message = f"HTTP {resp.status}"
-#                             print(f"❌ Ошибка в запросе {index},HTTP {resp.status} - {await resp.text()}")
+                    # отпрявляем запрос POST и получаем ответ от FASTapi нашего 
+                    async with session.post(URL_DAILY, data=form_daily) as resp:
+                        if resp.status == 200:
+                            json_resp = await resp.json()
+                            base64_img = json_resp.get("image_base64")
+                            if base64_img:
+                                img_bytes = base64.b64decode(base64_img)
+                                filename = f"{RESULTS_DIR}/daily-stat-{index}.png"
+                                with open(filename, "wb") as out:
+                                    out.write(img_bytes)
+                                print(f"✅ Получено: {filename}")
+                                success = True
+                            else:
+                                error_message = "❌ Нет поля 'image_base64' в ответе"
+                        else:
+                            error_message = f"HTTP {resp.status}"
+                            print(f"❌ Ошибка в запросе {index},HTTP {resp.status} - {await resp.text()}")
 
-#         except Exception as e:
-#             error_message = str(e)
-#             print(f"❌ Ошибка в запросе {index}: {error_message}")
+        except Exception as e:
+            error_message = str(e)
+            print(f"❌ Ошибка в запросе {index}: {error_message}")
 
 
-#         # общая статистика по всем запросам
-#         duration = time.perf_counter() - start
+        # общая статистика по всем запросам
+        duration = time.perf_counter() - start
 
-#         request_stats.append(
-#             {
-#                 "index": index,
-#                 "file": os.path.basename(file_path),
-#                 "success": success,
-#                 "duration_sec": round(duration, 4),
-#                 "error": error_message,
-#             }
-#         )
+        request_stats.append(
+            {
+                "index": index,
+                "file": os.path.basename(file_path),
+                "success": success,
+                "duration_sec": round(duration, 4),
+                "error": error_message,
+            }
+        )
 
 async def main():
     files = sorted(
@@ -160,12 +159,12 @@ async def main():
         await asyncio.gather(
             *[
                 # coro
-                # for i in range(0, len(files)-1)
+                # for i in range(0, len(files)//2-1)
                 # for coro in (
                 #     send_request_daily(session, files[i], files[i + 1], i + 1),
                 #     send_request_weekly(session, files[i], i + 1)
                 # )
-                send_request(session, files[i], files[i+1], i + 1)
+                send_request_weekly(session, files[i], i + 1)
                 for i in range(0, len(files) - 1, 1)
             ]
         )
