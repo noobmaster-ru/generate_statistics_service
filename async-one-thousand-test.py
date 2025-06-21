@@ -154,7 +154,7 @@ async def main():
         await asyncio.gather(
             *[
                 coro
-                for i in range(0, len(files)//2-1)
+                for i in range(0, len(files)-1)
                 for coro in (
                     send_request_daily(session, files[i], files[i + 1], i + 1),
                     send_request_weekly(session, files[i], i + 1)
