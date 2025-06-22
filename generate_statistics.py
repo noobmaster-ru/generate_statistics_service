@@ -104,7 +104,9 @@ def generate_daily_statistics(df_avg, df_weekly):
     current_date = datetime.now().strftime("%d/%m/%Y")
     fig.suptitle(f"ООО Сигма Еком: Прошлая неделя VS Текущая неделя · {current_date}", fontsize=26)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.close(fig)
+    buf.close()
+    del buf
+    del qr_img
     return fig
 
 
@@ -211,5 +213,7 @@ def generate_weekly_statistics(df):
     current_date = datetime.now().strftime("%d/%m/%Y")
     fig.suptitle(f"ООО Сигма Еком: Прошлая неделя VS Текущая неделя · {current_date}", fontsize=26)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.close(fig)
+    buf.close()
+    del buf
+    del qr_img
     return fig

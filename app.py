@@ -14,7 +14,7 @@ from fastapi import HTTPException, UploadFile
 import asyncio
 import matplotlib
 matplotlib.use('Agg')  
-
+import gc
 
 app = FastAPI()
 app.add_middleware(
@@ -30,15 +30,15 @@ async def build_base64_json_response(fig, json_payload):
         img_bytes = await asyncio.to_thread(_matplotlib_figure_to_png_bytes, fig)
         img_base64 = base64.b64encode(img_bytes).decode()
         plt.close(fig)
+        gc.collect()
         return {"image_base64": img_base64, **json_payload}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error rendering graph: {str(e)}")
 
 def _matplotlib_figure_to_png_bytes(fig):
     buf = io.BytesIO()
-    fig.savefig(buf, format='png', dpi=100, bbox_inches='tight') # dpi = 80 maybe
+    fig.savefig(buf, format='png', dpi=80, bbox_inches='tight') # dpi = 80  maybe or lower
     buf.seek(0)
-    plt.close(fig) 
     return buf.getvalue()
 
 
@@ -56,9 +56,9 @@ def cast_columns(df: pd.DataFrame, expected_columns: dict) -> pd.DataFrame:
     return df
 
 # 400 error - data error
-def read_csv_safe(file: UploadFile) -> pd.DataFrame:
+async def read_csv_safe(file: UploadFile) -> pd.DataFrame:
     try:
-        df = pd.read_csv(file, sep=";", dtype=str, keep_default_na=False)
+        df = await asyncio.to_thread(pd.read_csv, file, sep=";", dtype=str, keep_default_na=False)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error reading CSV: {str(e)}")
 
@@ -136,8 +136,8 @@ async def daily_statistics(
     cabinet_name: str = Form(...),
 ):
     try:
-        df1 = read_csv_safe(file1.file) 
-        df2 = read_csv_safe(file2.file) 
+        df1 = await read_csv_safe(file1.file) 
+        df2 = await read_csv_safe(file2.file) 
          
         start = time.perf_counter()
         fig = generate_daily_statistics(df1, df2)
@@ -171,7 +171,7 @@ async def weekly_statistics(
     cabinet_name: str = Form(...),
 ):
     try:
-        df = read_csv_safe(file.file) 
+        df = await read_csv_safe(file.file) 
 
         start = time.perf_counter()
         fig = generate_weekly_statistics(df)

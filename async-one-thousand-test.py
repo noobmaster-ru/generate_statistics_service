@@ -3,7 +3,7 @@ import asyncio
 import os
 import time
 import base64
-from dotenv import load_dotenv
+
 
 
 async def send_request_weekly(session, file_path, index):
@@ -173,13 +173,11 @@ async def main():
 
 
 if __name__ == "__main__":
-    load_dotenv()
-    SEMAPHORE_LIMIT = int(os.getenv("SEMAPHORE_LIMIT"))
-    CORRECT_DATA = os.getenv("CORRECT_DATA") 
-    RESULTS_DIR = os.getenv("RESULTS_DIR")
-    URL_WEEKLY = os.getenv("URL_WEEKLY")
-    URL_DAILY = os.getenv("URL_DAILY")
-
+    SEMAPHORE_LIMIT=100
+    CORRECT_DATA="correct_data"
+    RESULTS_DIR="results_pictures"
+    URL_WEEKLY="http://localhost:8050/get-image-weekly"
+    URL_DAILY="http://localhost:8050/get-image-daily"
     request_stats = []
     semaphore = asyncio.Semaphore(SEMAPHORE_LIMIT)
     asyncio.run(main())

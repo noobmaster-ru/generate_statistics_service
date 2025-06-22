@@ -1,26 +1,32 @@
-# Используем официальный образ Python
-FROM python:3.10-slim
+# Базовый образ с Python
+FROM python:3.13-slim
 
-# Устанавливаем рабочую директорию
+# Переменные окружения
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Установка зависимостей системы
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libglib2.0-0 \
+    libgl1-mesa-glx \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Создание рабочей директории
 WORKDIR /app
 
-# Обновляем pip
-RUN pip install --upgrade pip
-
-# Устанавливаем зависимости системы
-RUN apt-get update && apt-get install -y gcc libpq-dev curl && rm -rf /var/lib/apt/lists/*
-
-# Копируем файлы зависимостей
+# Копируем зависимости и устанавливаем
 COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Устанавливаем Python-зависимости
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Копируем всё приложение
+# Копируем всё остальное
 COPY . .
 
-# Открываем порт
+# Указываем порт
 EXPOSE 8050
 
-# Команда запуска  # Учесть кол - во ядер сервера
-CMD ["gunicorn", "app:app", "-k", "uvicorn.workers.UvicornWorker", "--workers", "5", "--bind", "0.0.0.0:8050"]
+# Команда запуска
+CMD ["gunicorn", "app:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "8", "--bind", "0.0.0.0:8050", "--timeout", "180"]

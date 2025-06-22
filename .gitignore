@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.log
+venv_min/
+.DS_Store
+.idea/
+.vscode/
+*.sqlite3
+results_pictures/
+correct_data/
+failure_data/
