@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib
-matplotlib.use("Agg")  # <-- отключает GUI, включает off-screen rendering
+matplotlib.use("Agg") 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import qrcode
@@ -8,7 +8,6 @@ import io
 from datetime import datetime, timedelta
 
 def generate_daily_statistics(df_avg, df_weekly):
-    # Подготовка данных
     df_avg["date"] = pd.to_datetime(df_avg["date"])
     latest_date_avg = df_avg["date"].max()
     this_week_avg = df_avg[df_avg["date"] > latest_date_avg - timedelta(days=7)].copy()
@@ -35,26 +34,26 @@ def generate_daily_statistics(df_avg, df_weekly):
     ax3 = fig.add_subplot(gs[2, :])
     x = [day_map[d] for d in days]
 
-    # 1. Заказы
+    # ---  Orders ---
     ax1.bar(x, this_week_avg["median_orders_sum_per_user"], label="Средний селлер", color="orange", alpha=0.6)
     ax1.bar(x, this_week["orders_sum_rub"], label="Ваш кабинет", color="crimson", alpha=0.6)
     ax1.set_ylabel("Сумма заказов в млн. руб")
     ax1.set_title("Сравнение сумм заказов по дням")
     ax1.legend()
 
-    # 2. ДРР
+    # ---  DRR ---
     ax2.plot(x, this_week_avg["median_drr"] * 100, label="Средний селлер", linestyle="--", marker="o", color="orange")
     ax2.plot(x, (this_week["sum"] / this_week["orders_sum_rub"]) * 100, label="Ваш кабинет", marker="o", color="orangered")
     ax2.set_ylabel("ДРР (%)")
     ax2.set_title("Сравнение ДРР по дням")
     ax2.legend()
 
-    # 3. Заказы и ДРР Автотаблиц
+    #  ---  Orders &  DRR  autotables ---
     ax3.bar(x, this_week_avg["avg_orders_sum_per_user"], label="Пользователь Автотаблиц", color="yellowgreen", alpha=0.6)
     ax3.set_ylabel("Сумма заказов")
     ax3_twin = ax3.twinx()
     ax3_twin.plot(x, this_week_avg["drr"] * 100, label="ДРР Пользователь Автотаблиц", color="dimgray", marker="o")
-    # ax3_twin.set_ylabel("ДРР (%)")
+    ax3_twin.set_ylabel("ДРР (%)")
     ax3.set_title("Пользователь Автотаблиц")
     ax3.legend(loc="upper left")
     ax3_twin.legend(loc="upper right")
@@ -74,19 +73,19 @@ def generate_daily_statistics(df_avg, df_weekly):
     buf.seek(0)
     qr_img = plt.imread(buf)
 
-    # Создаем вложенную сетку внутри ячейки [0,2]
+    # grid in  [0,2]
     inner_gs = gridspec.GridSpecFromSubplotSpec(
-        2, 1,  # 3 строки, 1 столбец
+        2, 1, 
         subplot_spec=gs[0, 2],
-        height_ratios=[1, 6]  # 75% под QR-код, 25% под текст
+        height_ratios=[1, 6] 
     )
 
-    # Нижняя часть: QR-код
+    # lower part: QR-code
     ax_qr = fig.add_subplot(inner_gs[1])
     ax_qr.imshow(qr_img)
     ax_qr.axis('off')
 
-    # Верхняя часть: текст
+    # Upper part: text
     ax_text = fig.add_subplot(inner_gs[0])
     ax_text.axis('off')
     text_content = (
@@ -95,10 +94,10 @@ def generate_daily_statistics(df_avg, df_weekly):
         "со средним по рынку @selleralarm_bot"
     )
     ax_text.text(
-        0.5, 0.5,  # Центр по горизонтали и вертикали
+        0.5, 0.5,  
         text_content,
         fontsize=14,
-        ha='center',  # Выравнивание по центру
+        ha='center',  
         va='center',
         linespacing=1.5
     )
@@ -112,7 +111,6 @@ def generate_daily_statistics(df_avg, df_weekly):
 def generate_weekly_statistics(df):
     df["date"] = pd.to_datetime(df["date"])
 
-    # Добавить это:
     numeric_columns = ["orders_sum_rub", "sum", "cliks", "views"]
     for col in numeric_columns:
         df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -142,14 +140,14 @@ def generate_weekly_statistics(df):
     ax2 = fig.add_subplot(gs[1, :])
     ax3 = fig.add_subplot(gs[2, :])
 
-    # --- Plot 1: Orders ---
+    # ---  Orders ---
     ax1.bar(x, last_week["orders_sum_rub"], label="Прошлая неделя", color="lightslategrey")
     ax1.bar(x, this_week["orders_sum_rub"], label="Текущая неделя", color="crimson", alpha=0.7)
     ax1.set_title("Сумма заказов")
     ax1.legend()
     ax1.set_ylabel("Сумма",rotation=0)
 
-    # --- Plot 2: DRR ---
+    # ---  DRR ---
     drr_last = (last_week["sum"] / last_week["orders_sum_rub"] * 100).values
     drr_this = (this_week["sum"] / this_week["orders_sum_rub"] * 100).values
     ax2.plot(x, drr_last, label="ДРР Прошлая неделя", linestyle="--", color="gray")
@@ -158,7 +156,7 @@ def generate_weekly_statistics(df):
     ax2.set_ylabel("%",rotation=0)
     ax2.legend()
 
-    # --- Plot 3: CTR ---
+    # --- CTR ---
     ctr_last = (last_week["cliks"] / last_week["views"] * 100).values
     ctr_this = (this_week["cliks"] / this_week["views"] * 100).values
     ax3.plot(x, ctr_last, label="CTR Прошлая неделя", linestyle="--", color="gray")
@@ -172,7 +170,7 @@ def generate_weekly_statistics(df):
         ax.set_xticklabels(x, fontsize=12)
         ax.grid(True, linestyle='--', alpha=0.5)
 
-    # --- QR Code ---
+    # --- QR-code ---
     qr = qrcode.QRCode(box_size=2, border=2)
     qr.add_data("https://t.me/selleralarm_bot")
     qr.make(fit=True)
@@ -182,19 +180,19 @@ def generate_weekly_statistics(df):
     buf.seek(0)
     qr_img = plt.imread(buf)
 
-    # Создаем вложенную сетку внутри ячейки [0,2]
+    # grid in [0,2]
     inner_gs = gridspec.GridSpecFromSubplotSpec(
-        2, 1,  # 3 строки, 1 столбец
+        2, 1,  
         subplot_spec=gs[0, 2],
-        height_ratios=[1, 6]  # 75% под QR-код, 25% под текст
+        height_ratios=[1, 6] 
     )
 
-    # Нижняя часть: QR-код
+    # lower part: QR-code
     ax_qr = fig.add_subplot(inner_gs[1])
     ax_qr.imshow(qr_img)
     ax_qr.axis('off')
 
-    # Верхняя часть: текст
+    # upper part: text
     ax_text = fig.add_subplot(inner_gs[0])
     ax_text.axis('off')
     text_content = (
@@ -203,16 +201,15 @@ def generate_weekly_statistics(df):
         "со средним по рынку @selleralarm_bot"
     )
     ax_text.text(
-        0.5, 0.5,  # Центр по горизонтали и вертикали
+        0.5, 0.5,  
         text_content,
         fontsize=14,
-        ha='center',  # Выравнивание по центру
+        ha='center',  
         va='center',
         linespacing=1.5
     )
     current_date = datetime.now().strftime("%d/%m/%Y")
     fig.suptitle(f"ООО Сигма Еком: Прошлая неделя VS Текущая неделя · {current_date}", fontsize=26)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-
     plt.close(fig)
     return fig

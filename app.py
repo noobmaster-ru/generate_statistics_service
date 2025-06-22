@@ -13,12 +13,10 @@ from fastapi.responses import JSONResponse
 from fastapi import HTTPException, UploadFile
 import asyncio
 import matplotlib
-matplotlib.use('Agg')  # <- отключает GUI backend
+matplotlib.use('Agg')  
 
 
 app = FastAPI()
-
-# Optional: CORS settings if needed
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,20 +25,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 async def build_base64_json_response(fig, json_payload):
     try:
-        # Запускаем синхронную функцию в отдельном потоке, чтобы не блокировать event loop
         img_bytes = await asyncio.to_thread(_matplotlib_figure_to_png_bytes, fig)
         img_base64 = base64.b64encode(img_bytes).decode()
         plt.close(fig)
         return {"image_base64": img_base64, **json_payload}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при рендере графика: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error rendering graph: {str(e)}")
 
 def _matplotlib_figure_to_png_bytes(fig):
     buf = io.BytesIO()
-    fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+    fig.savefig(buf, format='png', dpi=100, bbox_inches='tight') # dpi = 80 maybe
     buf.seek(0)
     plt.close(fig) 
     return buf.getvalue()
@@ -62,10 +58,9 @@ def cast_columns(df: pd.DataFrame, expected_columns: dict) -> pd.DataFrame:
 # 400 error - data error
 def read_csv_safe(file: UploadFile) -> pd.DataFrame:
     try:
-        # Читаем всё как строки, без автоматической подстановки NaN
         df = pd.read_csv(file, sep=";", dtype=str, keep_default_na=False)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Ошибка чтения CSV: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error reading CSV: {str(e)}")
 
     expected_columns = {
         "id": int,
@@ -85,14 +80,14 @@ def read_csv_safe(file: UploadFile) -> pd.DataFrame:
     # convert all data from df to expected types
     df = cast_columns(df, expected_columns)
     if len(df) < 14:
-        raise HTTPException(status_code=400, detail=f"Ожидалось минимум 14 строк данных (без заголовка), получено: {len(df)}")
+        raise HTTPException(status_code=400, detail=f"Expected minimum 14 rows of data (no header), received: {len(df)}")
 
     if list(df.columns) != list(expected_columns.keys()):
-        raise HTTPException(status_code=400, detail="Неверные или отсутствующие названия столбцов")
+        raise HTTPException(status_code=400, detail="Incorrect or missing column names")
 
-    # Проверка и преобразование значений
+
     for col, expected_type in expected_columns.items():
-        for i, val in enumerate(df[col], start=2):  # +2 потому что первая строка — заголовки
+        for i, val in enumerate(df[col], start=2):  
             try:
                 if expected_type == "datetime":
                     try:
@@ -100,7 +95,7 @@ def read_csv_safe(file: UploadFile) -> pd.DataFrame:
                     except Exception as e:
                         raise HTTPException(
                             status_code=400,
-                            detail=f"Столбец '{col}', строка {i}: значение '{val}' не соответствует типу {expected_type} — {e}"
+                            detail=f"Column '{col}', row {i}: value '{val}' does not match the type {expected_type} — {e}"
                         )
                 elif expected_type == int:
                     try:
@@ -108,7 +103,7 @@ def read_csv_safe(file: UploadFile) -> pd.DataFrame:
                     except Exception as e:
                         raise HTTPException(
                             status_code=400,
-                            detail=f"Столбец '{col}', строка {i}: значение '{val}' не соответствует типу {expected_type} — {e}"
+                            detail=f"Column '{col}', row {i}: value '{val}' does not match the type {expected_type} — {e}"
                         )
                 elif expected_type == float:
                     try:
@@ -116,17 +111,17 @@ def read_csv_safe(file: UploadFile) -> pd.DataFrame:
                     except Exception as e:
                         raise HTTPException(
                             status_code=400,
-                            detail=f"Столбец '{col}', строка {i}: значение '{val}' не соответствует типу {expected_type} — {e}"
+                            detail=f"Column '{col}', row {i}: value '{val}' does not match the type {expected_type} — {e}"
                         )
                 else:
                     raise HTTPException(
                             status_code=400,
-                            detail=f"Столбец '{col}', строка {i}: значение '{val}' не соответствует типу {expected_type} — {e}"
+                            detail=f"Column '{col}', row {i}: value '{val}' does not match the type {expected_type} — {e}"
                         )
             except Exception as e:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Столбец '{col}', строка {i}: значение '{val}' не соответствует типу {expected_type} — {e}"
+                    detail=f"Column '{col}', row {i}: value'{val}' does not match the type {expected_type} — {e}"
                 )
     return df
 
@@ -145,11 +140,11 @@ async def daily_statistics(
         df2 = read_csv_safe(file2.file) 
          
         start = time.perf_counter()
-        fig = generate_daily_statistics(df1, df2) # делает фотографию типа Figure
+        fig = generate_daily_statistics(df1, df2)
         duration = time.perf_counter() - start
 
         mem = psutil.Process().memory_info().rss / 1024**2
-        logger.info(f"График построен за {duration:.2f}s, память: {mem:.1f} MB")
+        logger.info(f"PLot making time = {duration:.2f}s, memory: {mem:.1f} MB")
 
         json_payload = {
             "token_id": token_id,
@@ -161,10 +156,10 @@ async def daily_statistics(
         return await build_base64_json_response(fig, json_payload)
     
     except HTTPException as e:
-        # ошибки пользователя - неправильные данные отправил
+        # data error 
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
-        # ошибка сервера - чето не то случилось
+        # server error
         return JSONResponse(status_code=500, content={"Error": str(e)})
 
 
@@ -183,7 +178,7 @@ async def weekly_statistics(
         duration = time.perf_counter() - start
 
         mem = psutil.Process().memory_info().rss / 1024**2
-        logger.info(f"График построен за {duration:.2f}s, память: {mem:.1f} MB")
+        logger.info(f"PLot making time =  {duration:.2f}s, memore: {mem:.1f} MB")
 
         json_payload = {
             "token_id": token_id,
@@ -193,9 +188,9 @@ async def weekly_statistics(
         plt.close(fig)
         return await build_base64_json_response(fig, json_payload)
     except HTTPException as e:
-        # ошибки пользователя - неправильные данные отправил
+        # data error
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
-        # ошибка сервера - чето не то случилось
+        # server error
         return JSONResponse(status_code=500, content={"Error": str(e)})
 

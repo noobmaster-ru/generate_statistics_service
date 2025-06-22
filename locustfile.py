@@ -4,12 +4,11 @@ from pathlib import Path
 
 
 CSV_DIR = Path("correct_data")
-CSV_FILES = list(CSV_DIR.glob("*.csv"))  #  all csv in correct data
+CSV_FILES = list(CSV_DIR.glob("*.csv"))  
 
-# RPS — сколько запросов в секунду выдерживает сервер
-# http://localhost:8089/
+# http://localhost:8080/
 class MyUser(HttpUser):
-    wait_time = between(0.01, 0.1)  # Пауза между запросами - можно попробовать constant(0)
+    wait_time = between(0,0) 
 
     @task
     def send_request(self):

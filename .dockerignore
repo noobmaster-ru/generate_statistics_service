@@ -1,10 +1,9 @@
-# Пример содержимого .dockerignore
 .git/
 venv/
 __pycache__/
 *.log
 *.pyc
 .env
-tests/  # Если есть тяжелые датасеты
+tests/  
 generate_tests/
 result_100/

@@ -2,9 +2,7 @@ import aiohttp
 import asyncio
 import os
 import time
-import csv
 import base64
-import json
 from dotenv import load_dotenv
 
 
@@ -14,16 +12,14 @@ async def send_request_weekly(session, file_path, index):
         success = False
         error_message = ""
         try:
-            # чтение в бинарном режиме всех файлов chunk_*.csv асинхронно
             with open(file_path, "rb") as f:
                 data = {
                     "token_id": "123",
                     "supplier_id": "21341",
                     "cabinet_name": "test_cabinet",
                 }
-                form_weekly = aiohttp.FormData() # экземляр класса для отправки  HTTP запроса
+                form_weekly = aiohttp.FormData() 
 
-                # c 57 по 64 строку добавляем  поля к запросу
                 form_weekly.add_field(
                     "file",
                     f,
@@ -34,7 +30,6 @@ async def send_request_weekly(session, file_path, index):
                 for k, v in data.items():
                     form_weekly.add_field(k, v)
 
-                # отпрявляем запрос POST и получаем ответ от FASTapi нашего 
                 async with session.post(URL_WEEKLY, data=form_weekly) as resp:
 
                     if resp.status == 200:
@@ -58,7 +53,7 @@ async def send_request_weekly(session, file_path, index):
             print(f"❌ Ошибка в запросе {index}: {error_message}")
 
 
-        # общая статистика по всем запросам
+
         duration = time.perf_counter() - start
 
         request_stats.append(
@@ -77,7 +72,7 @@ async def send_request_daily(session, file_path,file_path_, index):
         success = False
         error_message = ""
         try:
-            # чтение в бинарном режиме всех файлов chunk_*.csv асинхронно
+
             with open(file_path, "rb") as f1:
                 with open(file_path_, "rb") as f2:
                     data = {
@@ -85,9 +80,9 @@ async def send_request_daily(session, file_path,file_path_, index):
                         "supplier_id": "21341",
                         "cabinet_name": "test_cabinet",
                     }
-                    form_daily = aiohttp.FormData() # экземляр класса для отправки  HTTP запроса
+                    form_daily = aiohttp.FormData()
 
-                    # c 57 по 64 строку добавляем  поля к запросу
+
                     form_daily.add_field(
                         "file1",
                         f1,
@@ -103,7 +98,6 @@ async def send_request_daily(session, file_path,file_path_, index):
                     for k, v in data.items():
                         form_daily.add_field(k, v)
 
-                    # отпрявляем запрос POST и получаем ответ от FASTapi нашего 
                     async with session.post(URL_DAILY, data=form_daily) as resp:
                         if resp.status == 200:
                             json_resp = await resp.json()
@@ -126,7 +120,7 @@ async def send_request_daily(session, file_path,file_path_, index):
             print(f"❌ Ошибка в запросе {index}: {error_message}")
 
 
-        # общая статистика по всем запросам
+
         duration = time.perf_counter() - start
 
         request_stats.append(
@@ -149,16 +143,17 @@ async def main():
     )
     os.makedirs(RESULTS_DIR, exist_ok=True)
     start_time = time.perf_counter()
-    # отправляет запросы по всем файлам из correct_data
+
     async with aiohttp.ClientSession() as session:
         await asyncio.gather(
             *[
                 coro
-                for i in range(0, len(files)-1)
+                for i in range(0, len(files)//2) # for ~ 1000 files
                 for coro in (
                     send_request_daily(session, files[i], files[i + 1], i + 1),
                     send_request_weekly(session, files[i], i + 1)
                 )
+                # # one request only 
                 # send_request_weekly(session, files[i], i + 1)
                 # for i in range(0, len(files) - 1, 1)
             ]
@@ -168,15 +163,14 @@ async def main():
     success_count = sum(1 for r in request_stats if r["success"])
     fail_count = len(request_stats) - success_count
     speed = success_count / total_time if total_time > 0 else 0
-    # speed_2 = total_time / success_count if total_time > 0 else 0
 
-    # Вывод общей статистики
+
     print("\n📊 Итоговая статистика:")
     print(f"⏱️ Общее время: {total_time:.2f} секунд")
     print(f"✅ Успешных: {success_count}")
     print(f"❌ Ошибок: {fail_count}")
     print(f"⚡ Скорость: {speed:.2f} запросов/сек")
-    # print(f"⚡ Скорость: {speed_2:.2f} сек на запрос")
+
 
 if __name__ == "__main__":
     load_dotenv()
